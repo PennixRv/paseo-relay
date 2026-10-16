@@ -4,13 +4,14 @@ on:
   pull_request:
   push:
     branches: [main]
+    tags: ['v[0-9]*']
 
 permissions:
   contents: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
   verify:
@@ -28,3 +29,51 @@ jobs:
         with:
           node-version: 22
       - run: scripts/ci.sh
+
+  publish:
+    name: publish version image
+    needs: verify
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      packages: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Reserve a new version
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          [[ "$tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+          upstream="$(cat UPSTREAM_REVISION)"
+          [[ "$upstream" =~ ^[0-9a-f]{40}$ ]]
+          git merge-base --is-ancestor "$upstream" HEAD
+          # A draft reserves the version even if a later build or push fails.
+          gh release create "$tag" --draft --verify-tag --title "$tag" \
+            --notes 'Version reserved. Publication is not complete; do not reuse this version.'
+      - name: Build and publish the generic image
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          image="ghcr.io/${GITHUB_REPOSITORY,,}:$version"
+          upstream="$(cat UPSTREAM_REVISION)"
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          docker build --platform linux/amd64 --tag "$image" \
+            --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --label "org.opencontainers.image.version=$version" \
+            --label "io.pennix.upstream.revision=$upstream" .
+          docker push "$image"
+          digest_ref="$(docker image inspect --format '{{index .RepoDigests 0}}' "$image")"
+          [[ "$digest_ref" == "${image%:*}@sha256:"* ]]
+          printf 'Image: `%s`\n\nDigest: `%s`\n\nFork commit: `%s`\n\nUpstream commit: `%s`\n\nPlatform: `linux/amd64`\n' \
+            "$image" "$digest_ref" "$GITHUB_SHA" "$upstream" > "$RUNNER_TEMP/release-notes.md"
+          gh release edit "$GITHUB_REF_NAME" --draft=false --notes-file "$RUNNER_TEMP/release-notes.md"
