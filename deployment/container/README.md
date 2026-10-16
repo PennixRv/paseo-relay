@@ -9,7 +9,7 @@
 1. 显式选择并审阅上游提交，合并后更新 `UPSTREAM_REVISION`；不要自动追随 upstream main。
 2. 通过 PR 验证并合入 main，再创建新的版本 tag。
 3. tag 的 CI 先运行完整 `scripts/ci.sh`，成功后由发布 job 创建 draft release 预留版本，再构建并推送通用镜像，最后发布包含 tag、digest、fork/upstream SHA 和架构的 release。
-4. 发布 job 先显式检查同 tag 的 draft 或正式 release；已存在时立即拒绝。随后用 draft release 预留版本。中途失败保留预留版本和产物，查明失败后使用新版本，不删除 release/tag 来重用版本，不手动覆盖 registry tag。
+4. 发布 job 先成功读取完整 release 列表，再检查同 tag 的 draft 或正式 release；读取失败或已存在时立即停止。随后用 draft release 预留版本。中途失败保留预留版本和产物，查明失败后使用新版本，不删除 release/tag 来重用版本，不手动覆盖 registry tag。
 5. GHCR 首次发布默认私有，不继承公开源码仓库的可见性。首次发布后，操作者须在 [package settings](https://github.com/users/PennixRv/packages/container/paseo-relay/settings) 将其设为 Public，再验证匿名 pull；以后新版本沿用该 package 可见性。不要为此把个人 token 放入 Compose。
 
 发布只使用 job 级 `GITHUB_TOKEN`，无生产凭据；不自动部署 NAS，不修改应用协议。
