@@ -912,3 +912,9 @@
   test/paseo_relay/handshake_validation_test.exs test/relay_protocol_test.exs`
   passed 20/20 in 81.4 seconds. `asdf exec mix format`, `asdf exec mix compile
   --warnings-as-errors --force`, and `git diff --check` exited zero.
+
+## 通用容器版本发布
+
+- Red：修改前的工作流合同检查失败于 `CI does not accept version tags`；原 CI 只有 PR/main 验证，没有版本镜像发布 job。
+- Green：现有 CI 增加版本 tag 触发，发布 job 依赖完整 verify，使用 job 级 contents/packages 权限。原生 draft release 先预留版本，再推送镜像并发布 provenance；已有版本不能通过同一流程重新发布。
+- 本地检查通过：YAML 的 tag/依赖/权限/预留步骤、upstream 祖先关系、推送后才正式发布的顺序，以及各 Bash 步骤的语法；`git diff --check` 通过。应用与测试没有改动，完整 `scripts/ci.sh`、真实发布及重复版本拒绝仍须以 hosted CI 和外部产物回执验收，未用静态检查替代。
