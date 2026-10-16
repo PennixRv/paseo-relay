@@ -55,6 +55,10 @@ jobs:
           upstream="$(cat UPSTREAM_REVISION)"
           [[ "$upstream" =~ ^[0-9a-f]{40}$ ]]
           git merge-base --is-ancestor "$upstream" HEAD
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "release already exists for $tag; use a new version" >&2
+            exit 1
+          fi
           # A draft reserves the version even if a later build or push fails.
           gh release create "$tag" --draft --verify-tag --title "$tag" \
             --notes 'Version reserved. Publication is not complete; do not reuse this version.'

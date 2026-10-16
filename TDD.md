@@ -916,5 +916,5 @@
 ## 通用容器版本发布
 
 - Red：修改前的工作流合同检查失败于 `CI does not accept version tags`；原 CI 只有 PR/main 验证，没有版本镜像发布 job。
-- Green：现有 CI 增加版本 tag 触发，发布 job 依赖完整 verify，使用 job 级 contents/packages 权限。原生 draft release 先预留版本，再推送镜像并发布 provenance；已有版本不能通过同一流程重新发布。
-- 本地检查通过：YAML 的 tag/依赖/权限/预留步骤、upstream 祖先关系、推送后才正式发布的顺序，以及各 Bash 步骤的语法；`git diff --check` 通过。应用与测试没有改动，完整 `scripts/ci.sh`、真实发布及重复版本拒绝仍须以 hosted CI 和外部产物回执验收，未用静态检查替代。
+- Green：现有 CI 增加版本 tag 触发，发布 job 依赖完整 verify，使用 job 级 contents/packages 权限。发布 job 先显式检查同 tag 的 release，再用 draft release 预留版本，随后推送镜像并发布 provenance。
+- 本地检查通过：YAML 的 tag/依赖/权限/预留步骤、upstream 祖先关系、推送后才正式发布的顺序，以及各 Bash 步骤的语法；`git diff --check` 通过。首次真实发布成功，匿名 pull 和 release 元数据核验通过。手工调用 `gh release create` 暴露出其允许同 tag 额外建立 draft 的边界，已删除测试 draft，并将拒绝逻辑固定在工作流中；修订后的 hosted CI 及同版本失败回执仍须验证。
