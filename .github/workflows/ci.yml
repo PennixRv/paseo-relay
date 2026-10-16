@@ -55,7 +55,8 @@ jobs:
           upstream="$(cat UPSTREAM_REVISION)"
           [[ "$upstream" =~ ^[0-9a-f]{40}$ ]]
           git merge-base --is-ancestor "$upstream" HEAD
-          if gh release view "$tag" >/dev/null 2>&1; then
+          releases="$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases" --jq '.[].tag_name')"
+          if grep -Fxq "$tag" <<< "$releases"; then
             echo "release already exists for $tag; use a new version" >&2
             exit 1
           fi

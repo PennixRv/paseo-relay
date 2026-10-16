@@ -918,3 +918,4 @@
 - Red：修改前的工作流合同检查失败于 `CI does not accept version tags`；原 CI 只有 PR/main 验证，没有版本镜像发布 job。
 - Green：现有 CI 增加版本 tag 触发，发布 job 依赖完整 verify，使用 job 级 contents/packages 权限。发布 job 先显式检查同 tag 的 release，再用 draft release 预留版本，随后推送镜像并发布 provenance。
 - 本地检查通过：YAML 的 tag/依赖/权限/预留步骤、upstream 祖先关系、推送后才正式发布的顺序，以及各 Bash 步骤的语法；`git diff --check` 通过。首次真实发布成功，匿名 pull 和 release 元数据核验通过。手工调用 `gh release create` 暴露出其允许同 tag 额外建立 draft 的边界，已删除测试 draft，并将拒绝逻辑固定在工作流中；修订后的 hosted CI 及同版本失败回执仍须验证。
+- 版本查询也须 fail closed：不能把查询失败当作不存在。发布步骤在 `set -e` 下先读取完整 release 列表，查询失败直接停止，再用精确 tag 检查预留状态。真实已有版本的检查退出 1；不存在仓库的 API 查询退出非零，后续预留步骤不执行。
